@@ -87,7 +87,7 @@ const App: React.FC = () => {
           </label>
           <input
             type="number"
-            placeholder="%"
+            placeholder={ riskPercentage.toString() }
             onChange={ handleRiskPercentageChange }
             className="w-full p-3 mb-6 rounded-lg border-2 border-gray-300"
           />
