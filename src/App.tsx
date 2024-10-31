@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Button from "./components/Button/Button";
+import Option from "./components/Opation/Option";
 
+const tradingPairs: string[] = [
+  'XAU/USD', 'EUR/USD','USD/JPY','GBP/USD','USD/CHF','USD/CAD','AUD/USD','NZD/USD', 'EUR/GBP', 'EUR/AUD', 'EUR/NZD', 'EUR/CAD', 'EUR/CHF', 'GBP/JPY', 'GBP/AUD', 'GBP/CAD', 'GBP/CHF', 'GBP/NZD', 'AUD/JPY', 'AUD/NZD', 'AUD/CAD', 'AUD/CHF', 'NZD/JPY', 'NZD/CAD', 'NZD/CHF', 'CAD/JPY', 'CAD/CHF', 'CHF/JPY'
+];
 
 const App: React.FC = () => {
   const [ accountCurrency, setAccountCurrency ] = useState("USD");
@@ -13,6 +17,8 @@ const App: React.FC = () => {
 
   const [ pipsToSl, setPipsToSl ] = useState(0);
   const [ pipsToTp, setPipsToTp ] = useState(0);
+  const [ showResults, setShowResults ] = useState(false);
+  const [ isDisabled, setIsDisabled ] = useState(false);
 
   const handleCurrencyPairChange = (event: React.ChangeEvent<HTMLSelectElement>) => setCurrencyPair(event.target.value);
   const handleAccountCurrencyChange = (event: React.ChangeEvent<HTMLSelectElement>) => setAccountCurrency(event.target.value);
@@ -21,6 +27,7 @@ const App: React.FC = () => {
   const handleEntryPriceChange = (event:React.ChangeEvent<HTMLInputElement>) => setEntryPrice(Number(event.target.value));
   const handleSlPriceChange = (event:React.ChangeEvent<HTMLInputElement>) => setSlPrice(Number(event.target.value));
   const handleTpPriceChange = (event:React.ChangeEvent<HTMLInputElement>) => setTpPrice(Number(event.target.value));
+  const validateInputs = () => accountBalance > 0 && riskPercentage > 0 && entryPrice > 0 && slPrice > 0 && tpPrice > 0;
 
   useEffect(() => {
     const calculatePips = () => {
@@ -29,17 +36,20 @@ const App: React.FC = () => {
       if (currencyPair.toLowerCase().includes("jpy")) {
         pipValue = 0.01;
       }
+      else if (currencyPair.toLowerCase().includes("xau")) {
+        pipValue = 0.1;
+      }
 
       if ((entryPrice > 0) && (slPrice > 0)) {
         const slDifference = Math.abs(entryPrice - slPrice);
-        setPipsToSl(Math.round(slDifference / pipValue));
+        setPipsToSl(parseFloat((slDifference / pipValue).toFixed(1)));
       } else {
         setPipsToSl(0);
       };
 
       if ((entryPrice > 0) && (tpPrice > 0)) {
         const tpDifference = Math.abs(entryPrice - tpPrice);
-        setPipsToTp(Math.round(tpDifference / pipValue));
+        setPipsToTp(parseFloat((tpDifference / pipValue).toFixed(1)));
       } else {
         setPipsToTp(0);
       };
@@ -47,6 +57,11 @@ const App: React.FC = () => {
 
     calculatePips();
   }, [ entryPrice, slPrice, tpPrice, currencyPair ]);
+
+  useEffect(() => {
+    setIsDisabled(!validateInputs());
+  }, [accountBalance, riskPercentage, entryPrice, slPrice, tpPrice]);
+
 
   return (
     <div className="min-h-[100vh] items-center bg-gray-50 shadow-lg ">
@@ -124,13 +139,15 @@ const App: React.FC = () => {
             value={ currencyPair }
             onChange={ handleCurrencyPairChange }
           >
-            <option>EUR/USD</option>
-            <option>USD/JPY</option>
-            <option>GBP/USD</option>
+            { tradingPairs.map((pair, idx) => <Option key={ idx } value={ pair }>{ pair }</Option>) }
           </select>
 
-          <div className="border-red-500 mt-10 hidden">
-            <Button className="bg-green-500 text-white w-full py-4 text-xl font-semibold rounded-3xl">
+          <div className="border-red-500 mt-10">
+            <Button
+              className={`bg-green-500 text-white w-full py-4 text-xl font-semibold rounded-3xl ${isDisabled ? 'opacity-70' : 'opacity-100'}`}
+              onClick={ () => setShowResults(!showResults) }
+              disabled={ isDisabled }
+            >
               Calculate
             </Button>
           </div>
@@ -138,30 +155,30 @@ const App: React.FC = () => {
 
         {/* Right Side - Results Section */}
 
-        <div className="grid grid-rows-1 md:grid-rows-2 items-end">
+        { showResults && <div className="grid grid-rows-1 md:grid-rows-2 items-end">
           <div className="hidden md:block"></div>
           <div className="flex-1">
             <h2 className="text-xl font-bold mb-4">Results</h2>
             <div className="text-gray-700 space-y-4 ">
               <div className="flex justify-between">
                 <span>Amount at Risk</span>
-                <span className="font-semibold">{accountCurrency}</span>
+                <span className="font-semibold">{ (riskPercentage * accountBalance) / 100 } {accountCurrency}</span>
               </div>
               <div className="flex justify-between">
                 <span>Number of pips at risk</span>
-                <span className="font-semibold">{ pipsToSl }</span>
+                <span className="font-semibold">{ pipsToSl.toFixed(1) }</span>
               </div>
               <div className="flex justify-between">
                 <span>Number of pips to target</span>
-                <span className="font-semibold">{ pipsToTp }</span>
+                <span className="font-semibold">{ pipsToTp.toFixed(1) }</span>
               </div>
               <div className="flex justify-between">
                 <span>Risk-to-Reward</span>
-                <span className="font-semibold">{ pipsToSl > 0 ? (pipsToTp / pipsToSl).toFixed(): "N/A" }</span>
+                <span className="font-semibold">{ pipsToSl > 0 ? (pipsToTp / pipsToSl).toFixed(2): "N/A" }</span>
               </div>
               <div className="flex justify-between">
                 <span>Position Size (units)</span>
-                <span className="font-semibold">0</span>
+                <span className="font-semibold">{ (((riskPercentage * accountBalance) / 1000) / pipsToSl).toFixed(2) }</span>
               </div>
               <div>
                 <h2 className="text-xl font-bold mb-4 text-center mt-6">
@@ -170,7 +187,7 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div> }
       </div>
     </div>
   );
